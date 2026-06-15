@@ -47,7 +47,7 @@
   thead th.corner{position:sticky;left:0;z-index:4;background:#f1f3f6;min-width:88px;}
   .grp-row td{background:#f7f8fa;font-size:12px;font-weight:700;color:var(--sub);padding:6px 8px;position:sticky;left:0;}
   td.cell{padding:3px;min-width:96px;}
-  td.cell textarea{border:none;min-height:46px;font-size:12px;padding:5px;background:transparent;}
+  td.cell textarea{border:none;min-height:46px;font-size:12px;padding:5px;background:transparent;overflow:hidden;resize:none;}
   td.cell textarea:focus{background:#fafbff;outline:1px solid var(--accent-soft);border-radius:6px;}
   td.cell.todaycol{background:#f6f9ff;}
 
@@ -226,7 +226,7 @@ $("pwInput").addEventListener("keydown",e=>{if(e.key==="Enter")$("pwOk").click()
 function setMode(on){adminMode=on;$("modeBadge").textContent=on?"관리자 모드":"일반 모드";$("modeBadge").className="badge"+(on?" edit":"");$("modeBtn").textContent=on?"나가기":"관리자";$("rosterToggle").classList.toggle("hide",!on);if(!on)$("rosterCard").style.display="none";renderRoster();}
 
 /* 탭 */
-document.querySelectorAll(".tab").forEach(t=>{t.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");const v=t.dataset.tab;$("tab-weekly").classList.toggle("hide",v!=="weekly");$("tab-overtime").classList.toggle("hide",v!=="overtime");};});
+document.querySelectorAll(".tab").forEach(t=>{t.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");const v=t.dataset.tab;$("tab-weekly").classList.toggle("hide",v!=="weekly");$("tab-overtime").classList.toggle("hide",v!=="overtime");if(v==="weekly")growWeekly();};});
 
 /* 인원 정렬·그룹 */
 function sortedRoster(){return Object.entries(roster).sort((a,b)=>(a[1].order||0)-(b[1].order||0));}
@@ -259,9 +259,13 @@ function renderWeekly(){
   html+="</tbody>";
   $("wkTable").innerHTML=html;
   $("wkTable").querySelectorAll("textarea[data-p]").forEach(ta=>{
-    ta.addEventListener("blur",()=>db.ref(`${ROOT}/daily/${ta.dataset.d}/${ta.dataset.p}`).set(ta.value.trim()));
+    const grow=()=>{ta.style.height="auto";ta.style.height=(ta.scrollHeight||46)+"px";};
+    grow();
+    ta.addEventListener("input",grow);
+    ta.addEventListener("blur",()=>{db.ref(`${ROOT}/daily/${ta.dataset.d}/${ta.dataset.p}`).set(ta.value.trim());grow();});
   });
 }
+function growWeekly(){document.querySelectorAll("#wkTable textarea").forEach(ta=>{ta.style.height="auto";ta.style.height=(ta.scrollHeight||46)+"px";});}
 $("wPrev").onclick=()=>{weekRef.setDate(weekRef.getDate()-7);renderWeekly();};
 $("wNext").onclick=()=>{weekRef.setDate(weekRef.getDate()+7);renderWeekly();};
 $("wThis").onclick=()=>{weekRef=new Date();renderWeekly();};
