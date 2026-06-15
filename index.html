@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>업무 보드</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --line:#e3e6ea; --ink:#1c2430; --sub:#6b7785;
+    --accent:#2b5cff; --accent-soft:#eaf0ff; --warn:#d8442f; --ok:#1f9d55;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;}
+  header{background:var(--card);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30;}
+  header h1{font-size:16px;margin:0;font-weight:700;}
+  .mode{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  .badge{font-size:12px;padding:3px 9px;border-radius:20px;background:#eef1f4;color:var(--sub);}
+  .badge.edit{background:var(--accent-soft);color:var(--accent);font-weight:600;}
+  button{font-family:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;font-size:13px;color:var(--ink);}
+  button:hover{background:#f7f8fa;}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+  button.primary:hover{filter:brightness(1.05);}
+  button.ghost{border:none;background:none;color:var(--sub);padding:6px;}
+  .tabs{display:flex;gap:4px;padding:10px 14px 0;background:var(--bg);position:sticky;top:53px;z-index:25;}
+  .tab{flex:0 0 auto;padding:9px 16px;border-radius:10px 10px 0 0;border:1px solid var(--line);border-bottom:none;background:#e9ecf0;color:var(--sub);font-weight:600;}
+  .tab.active{background:var(--card);color:var(--ink);}
+  .wrap{padding:14px;max-width:1100px;margin:0 auto;}
+  .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+  .toolbar .spacer{flex:1;}
+  .datelabel{font-weight:700;font-size:15px;min-width:150px;text-align:center;}
+  input[type=date],input[type=time],input[type=text],input[type=password],select,textarea{
+    font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff;color:var(--ink);width:100%;
+  }
+  textarea{resize:vertical;min-height:38px;line-height:1.45;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .empty{color:var(--sub);text-align:center;padding:30px;}
+
+  /* ===== 주간 업무표 ===== */
+  .wk-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card);}
+  table.wk{border-collapse:collapse;width:100%;min-width:760px;}
+  table.wk th,table.wk td{border:1px solid var(--line);vertical-align:top;}
+  table.wk thead th{position:sticky;top:0;background:#f1f3f6;z-index:3;font-size:12px;padding:7px 4px;font-weight:700;text-align:center;}
+  table.wk thead th .dow{color:var(--sub);font-weight:600;}
+  table.wk thead th.sun{color:var(--warn);}
+  table.wk thead th.today{background:var(--accent-soft);color:var(--accent);}
+  .namecol{position:sticky;left:0;background:var(--card);z-index:2;min-width:88px;width:88px;padding:8px;font-weight:600;}
+  thead th.corner{position:sticky;left:0;z-index:4;background:#f1f3f6;min-width:88px;}
+  .grp-row td{background:#f7f8fa;font-size:12px;font-weight:700;color:var(--sub);padding:6px 8px;position:sticky;left:0;}
+  td.cell{padding:3px;min-width:96px;}
+  td.cell textarea{border:none;min-height:46px;font-size:12px;padding:5px;background:transparent;}
+  td.cell textarea:focus{background:#fafbff;outline:1px solid var(--accent-soft);border-radius:6px;}
+  td.cell.todaycol{background:#f6f9ff;}
+
+  /* 인원 관리 */
+  .group-h{font-size:12px;font-weight:700;letter-spacing:.03em;color:var(--sub);padding:10px 14px 4px;}
+  .rrow{display:flex;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap;}
+  .rrow:last-child{border-bottom:none;}
+  .rrow .nm{flex:1 1 90px;}
+  .rrow .gp{flex:1 1 90px;}
+  .rrow .ot{flex:0 0 auto;display:flex;align-items:center;gap:4px;font-size:12px;color:var(--sub);}
+  .rrow .ot input{width:auto;}
+  .add-row{display:flex;gap:8px;padding:11px 12px;border-top:1px solid var(--line);align-items:center;flex-wrap:wrap;}
+
+  /* ===== 캘린더 ===== */
+  .cal-head,.cal{display:grid;grid-template-columns:repeat(7,1fr);}
+  .cal-head div{text-align:center;font-size:12px;color:var(--sub);padding:6px 0;font-weight:600;}
+  .cal-head div:first-child{color:var(--warn);}
+  .cal{gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .day{background:#fff;min-height:74px;padding:4px 5px;cursor:pointer;display:flex;flex-direction:column;gap:3px;}
+  .day.dim{background:#fafbfc;cursor:default;}
+  .day .dnum{font-size:12px;color:var(--sub);}
+  .day.sun .dnum{color:var(--warn);}
+  .day.today{outline:2px solid var(--accent);outline-offset:-2px;}
+  .ent{display:flex;align-items:center;gap:4px;font-size:11px;line-height:1.3;}
+  .ent .enm{font-weight:600;}
+  .ent .eh{color:var(--accent);font-weight:700;}
+  .ent img{width:18px;height:18px;border-radius:3px;object-fit:cover;}
+  .thumbwrap{display:flex;flex-wrap:wrap;gap:2px;}
+  .total{margin-top:12px;background:var(--accent-soft);border-radius:10px;padding:12px 16px;}
+  .total .ttl{font-weight:700;margin-bottom:6px;}
+  .total .tline{display:flex;justify-content:space-between;font-size:13px;padding:2px 0;}
+  .total b{color:var(--accent);}
+
+  /* ===== 모달 ===== */
+  .ov{position:fixed;inset:0;background:rgba(20,28,40,.45);display:none;align-items:center;justify-content:center;z-index:60;padding:16px;overflow-y:auto;}
+  .ov.show{display:flex;}
+  .modal{background:#fff;border-radius:14px;width:100%;max-width:420px;padding:18px;max-height:90vh;overflow-y:auto;}
+  .modal h3{margin:0 0 12px;font-size:15px;}
+  .fld{margin-bottom:12px;}
+  .fld label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:600;}
+  .two{display:flex;gap:8px;}
+  /* 시간 입력을 버튼처럼 */
+  .timefield{display:flex;align-items:center;gap:6px;border:1.5px solid var(--accent);border-radius:9px;padding:6px 9px;background:var(--accent-soft);cursor:pointer;}
+  .timefield .clk{font-size:17px;}
+  .timefield input[type=time]{border:none;background:transparent;padding:4px 0;font-size:15px;font-weight:600;}
+  input[type=time]::-webkit-calendar-picker-indicator{transform:scale(1.4);opacity:1;cursor:pointer;}
+  .cap{font-size:11px;color:var(--accent);margin-top:4px;}
+  .modal-btns{display:flex;gap:8px;margin-top:8px;}
+  .modal-btns button{flex:1;}
+  .ent-list{margin-bottom:14px;}
+  .ent-card{border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:7px;display:flex;gap:9px;align-items:center;}
+  .ent-card img{width:46px;height:46px;border-radius:7px;object-fit:cover;flex:0 0 auto;}
+  .ent-card .info{flex:1;font-size:12px;line-height:1.4;}
+  .ent-card .acts{display:flex;gap:4px;flex:0 0 auto;}
+  .ent-card .acts button{padding:5px 8px;font-size:12px;}
+  .preview{position:relative;display:inline-block;}
+  .preview img{width:90px;height:90px;border-radius:9px;object-fit:cover;border:1px solid var(--line);}
+  .preview .x{position:absolute;top:-7px;right:-7px;background:var(--warn);color:#fff;border:none;border-radius:50%;width:22px;height:22px;padding:0;font-size:13px;}
+  .notice{background:#fff6e9;border:1px solid #f0d9b0;color:#9a6b16;border-radius:9px;padding:10px 12px;font-size:12px;margin-bottom:12px;line-height:1.5;}
+  .hint{font-size:12px;color:var(--sub);margin-top:8px;line-height:1.5;}
+  .hide{display:none!important;}
+</style>
+</head>
+<body>
+<header>
+  <h1>업무 보드</h1>
+  <div class="mode">
+    <span id="modeBadge" class="badge">일반 모드</span>
+    <button id="modeBtn">관리자</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="weekly">주간 업무표</div>
+  <div class="tab" data-tab="overtime">초과근무 캘린더</div>
+</div>
+
+<!-- ===== 주간 업무표 ===== -->
+<div class="wrap" id="tab-weekly">
+  <div class="toolbar">
+    <button id="wPrev">‹ 지난주</button>
+    <span class="datelabel" id="wLabel"></span>
+    <button id="wNext">다음주 ›</button>
+    <button id="wThis">이번주</button>
+    <span class="spacer"></span>
+    <button id="rosterToggle" class="hide">인원 관리</button>
+  </div>
+  <div class="wk-scroll"><table class="wk" id="wkTable"></table></div>
+  <div class="hint">업무 내용은 일반 모드에서도 칸을 눌러 바로 입력·수정됩니다. (자동 저장)</div>
+
+  <div class="card" id="rosterCard" style="margin-top:14px;display:none;">
+    <div class="group-h">인원 관리 · 그룹은 자유롭게 입력 / "초과" 체크 시 초과근무 캘린더에 표시됩니다</div>
+    <div id="rosterList"></div>
+    <div class="add-row">
+      <input type="text" id="newName" class="nm" placeholder="이름" />
+      <input type="text" id="newGroup" class="gp" placeholder="그룹(예: 직원)" />
+      <label class="ot"><input type="checkbox" id="newOt" checked /> 초과</label>
+      <button class="primary" id="addPerson">추가</button>
+    </div>
+    <div class="add-row" style="justify-content:flex-end;border-top:1px solid var(--line)">
+      <button id="changePw">비밀번호 변경</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 초과근무 캘린더 ===== -->
+<div class="wrap hide" id="tab-overtime">
+  <div class="toolbar">
+    <button id="mPrev">‹</button>
+    <span class="datelabel" id="mLabel"></span>
+    <button id="mNext">›</button>
+    <span class="spacer"></span>
+    <span class="badge">정규 10:00~18:00</span>
+  </div>
+  <div class="cal-head"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+  <div class="cal" id="calGrid"></div>
+  <div class="total" id="monthTotal"></div>
+  <div class="hint">날짜 칸을 누르면 그날 기록을 보고 입력할 수 있습니다. 일반 모드에서는 <b>오늘 날짜만</b> 입력·수정·삭제 가능합니다(관리자 모드는 전체).</div>
+</div>
+
+<!-- 날짜별 초과근무 모달 -->
+<div class="ov" id="dayModal"><div class="modal"><div id="dayBody"></div></div></div>
+
+<!-- 비밀번호 모달 -->
+<div class="ov" id="pwModal">
+  <div class="modal">
+    <h3>관리자 모드</h3>
+    <div class="fld"><label>비밀번호</label><input type="password" id="pwInput" placeholder="비밀번호" /></div>
+    <div class="modal-btns">
+      <button id="pwCancel">취소</button>
+      <button id="pwOk" class="primary">확인</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDwX98qb9MRccEa05H5q_sicvmdGI31MV4",
+  authDomain: "work-board-3936a.firebaseapp.com",
+  databaseURL: "https://work-board-3936a-default-rtdb.firebaseio.com",
+  projectId: "work-board-3936a",
+  storageBucket: "work-board-3936a.firebasestorage.app",
+  messagingSenderId: "1084316199106",
+  appId: "1:1084316199106:web:5e84308436781be38e335b"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const ROOT = "workboard";
+
+let adminMode=false, roster={}, password="3522a";
+let weekRef=new Date(), otMonth=new Date();
+let dailyCache={}, otCache={};
+let formImg=""; // 모달 폼의 현재 이미지(base64)
+
+const $=id=>document.getElementById(id);
+const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const fmt=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const todayStr=()=>fmt(new Date());
+function weekStart(d){const x=new Date(d);const k=(x.getDay()+6)%7;x.setDate(x.getDate()-k);x.setHours(0,0,0,0);return x;}
+function diffHours(s,e){if(!s||!e)return 0;const[a,b]=s.split(":").map(Number),[c,d]=e.split(":").map(Number);let m=(c*60+d)-(a*60+b);if(m<0)m+=1440;return m/60;}
+function fmtH(h){return h%1?h.toFixed(1):h;}
+
+/* 구독 */
+db.ref(ROOT+"/config/password").on("value",s=>{if(s.exists())password=s.val();});
+db.ref(ROOT+"/roster").on("value",s=>{roster=s.val()||{};renderWeekly();renderRoster();renderCalendar();});
+db.ref(ROOT+"/daily").on("value",s=>{dailyCache=s.val()||{};renderWeekly();});
+db.ref(ROOT+"/overtime").on("value",s=>{otCache=s.val()||{};renderCalendar();});
+
+/* 모드 */
+$("modeBtn").onclick=()=>{if(adminMode)setMode(false);else{$("pwInput").value="";$("pwModal").classList.add("show");setTimeout(()=>$("pwInput").focus(),50);}};
+$("pwOk").onclick=()=>{if($("pwInput").value===password){$("pwModal").classList.remove("show");setMode(true);}else alert("비밀번호가 틀렸습니다.");};
+$("pwCancel").onclick=()=>$("pwModal").classList.remove("show");
+$("pwInput").addEventListener("keydown",e=>{if(e.key==="Enter")$("pwOk").click();});
+function setMode(on){adminMode=on;$("modeBadge").textContent=on?"관리자 모드":"일반 모드";$("modeBadge").className="badge"+(on?" edit":"");$("modeBtn").textContent=on?"나가기":"관리자";$("rosterToggle").classList.toggle("hide",!on);if(!on)$("rosterCard").style.display="none";renderRoster();}
+
+/* 탭 */
+document.querySelectorAll(".tab").forEach(t=>{t.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");const v=t.dataset.tab;$("tab-weekly").classList.toggle("hide",v!=="weekly");$("tab-overtime").classList.toggle("hide",v!=="overtime");};});
+
+/* 인원 정렬·그룹 */
+function sortedRoster(){return Object.entries(roster).sort((a,b)=>(a[1].order||0)-(b[1].order||0));}
+function groupedRoster(){
+  const list=sortedRoster();const order=[];const map={};
+  list.forEach(([id,p])=>{const g=p.group||"기타";if(!map[g]){map[g]=[];order.push(g);}map[g].push([id,p]);});
+  return order.map(g=>[g,map[g]]);
+}
+
+/* ===== 주간 업무표 ===== */
+function renderWeekly(){
+  const ws=weekStart(weekRef);
+  const days=[...Array(7)].map((_,i)=>{const d=new Date(ws);d.setDate(ws.getDate()+i);return d;});
+  $("wLabel").textContent=`${ws.getMonth()+1}/${ws.getDate()} – ${days[6].getMonth()+1}/${days[6].getDate()}`;
+  const tstr=todayStr();
+  const dows=["월","화","수","목","금","토","일"];
+  let html="<thead><tr><th class='corner'>이름</th>";
+  days.forEach((d,i)=>{const k=fmt(d);const sun=d.getDay()===0;const isT=k===tstr;html+=`<th class='${sun?"sun":""} ${isT?"today":""}'>${d.getMonth()+1}/${d.getDate()}<br><span class='dow'>${dows[i]}</span></th>`;});
+  html+="</tr></thead><tbody>";
+  const groups=groupedRoster();
+  if(groups.length===0){html+="<tr><td class='namecol'></td><td colspan='7' style='padding:24px;text-align:center;color:var(--sub)'>인원이 없습니다. 관리자 모드 → 인원 관리에서 추가해 주세요.</td></tr>";}
+  groups.forEach(([g,people])=>{
+    html+=`<tr class='grp-row'><td colspan='8'>${esc(g)}</td></tr>`;
+    people.forEach(([id,p])=>{
+      html+=`<tr><td class='namecol'>${esc(p.name)}</td>`;
+      days.forEach(d=>{const k=fmt(d);const v=esc((dailyCache[k]||{})[id]||"");const isT=k===tstr;html+=`<td class='cell ${isT?"todaycol":""}'><textarea data-d='${k}' data-p='${id}'>${v}</textarea></td>`;});
+      html+="</tr>";
+    });
+  });
+  html+="</tbody>";
+  $("wkTable").innerHTML=html;
+  $("wkTable").querySelectorAll("textarea[data-p]").forEach(ta=>{
+    ta.addEventListener("blur",()=>db.ref(`${ROOT}/daily/${ta.dataset.d}/${ta.dataset.p}`).set(ta.value.trim()));
+  });
+}
+$("wPrev").onclick=()=>{weekRef.setDate(weekRef.getDate()-7);renderWeekly();};
+$("wNext").onclick=()=>{weekRef.setDate(weekRef.getDate()+7);renderWeekly();};
+$("wThis").onclick=()=>{weekRef=new Date();renderWeekly();};
+
+/* 인원 관리 */
+$("rosterToggle").onclick=()=>{const c=$("rosterCard");c.style.display=c.style.display==="none"?"block":"none";};
+function renderRoster(){
+  const wrap=$("rosterList");const list=sortedRoster();
+  if(list.length===0){wrap.innerHTML="<div class='empty' style='padding:16px'>아직 인원이 없습니다.</div>";return;}
+  wrap.innerHTML=list.map(([id,p])=>`
+    <div class='rrow'>
+      <input type='text' class='nm' data-nm='${id}' value='${esc(p.name)}' />
+      <input type='text' class='gp' data-gp='${id}' value='${esc(p.group||"")}' placeholder='그룹' />
+      <label class='ot'><input type='checkbox' data-ot='${id}' ${p.overtime!==false?"checked":""}/> 초과</label>
+      <button class='ghost' style='color:var(--warn)' data-del='${id}'>삭제</button>
+    </div>`).join("");
+  wrap.querySelectorAll("input[data-nm]").forEach(i=>i.addEventListener("blur",()=>db.ref(`${ROOT}/roster/${i.dataset.nm}/name`).set(i.value.trim())));
+  wrap.querySelectorAll("input[data-gp]").forEach(i=>i.addEventListener("blur",()=>db.ref(`${ROOT}/roster/${i.dataset.gp}/group`).set(i.value.trim())));
+  wrap.querySelectorAll("input[data-ot]").forEach(i=>i.onchange=()=>db.ref(`${ROOT}/roster/${i.dataset.ot}/overtime`).set(i.checked));
+  wrap.querySelectorAll("button[data-del]").forEach(b=>b.onclick=()=>{if(confirm("이 인원을 삭제하시겠습니까? (기록은 남습니다)"))db.ref(`${ROOT}/roster/${b.dataset.del}`).remove();});
+}
+$("addPerson").onclick=()=>{
+  const name=$("newName").value.trim();if(!name)return;
+  const id=db.ref(`${ROOT}/roster`).push().key;
+  db.ref(`${ROOT}/roster/${id}`).set({name,group:$("newGroup").value.trim()||"직원",overtime:$("newOt").checked,order:Object.keys(roster).length});
+  $("newName").value="";$("newGroup").value="";
+};
+$("newName").addEventListener("keydown",e=>{if(e.key==="Enter")$("addPerson").click();});
+
+/* ===== 초과근무 캘린더 (전원 통합) ===== */
+function otPeople(){return sortedRoster().filter(([,p])=>p.overtime!==false);}
+function renderCalendar(){
+  $("mLabel").textContent=`${otMonth.getFullYear()}년 ${otMonth.getMonth()+1}월`;
+  const y=otMonth.getFullYear(),m=otMonth.getMonth();
+  const first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
+  const tstr=todayStr();const totals={};
+  let html="";
+  for(let i=0;i<first;i++)html+="<div class='day dim'></div>";
+  for(let d=1;d<=days;d++){
+    const k=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const dayData=otCache[k]||{};const dow=new Date(y,m,d).getDay();
+    let ents="";
+    Object.entries(dayData).forEach(([pid,e])=>{
+      if(!roster[pid]||roster[pid].overtime===false)return;
+      const h=diffHours(e.start,e.end);totals[pid]=(totals[pid]||0)+h;
+      ents+=`<div class='ent'><span class='enm'>${esc(roster[pid].name)}</span> <span class='eh'>${fmtH(h)}h</span>${e.img?`<img src='${e.img}'>`:""}</div>`;
+    });
+    html+=`<div class='day ${dow===0?"sun":""} ${k===tstr?"today":""}' data-d='${k}'><span class='dnum'>${d}</span>${ents}</div>`;
+  }
+  $("calGrid").innerHTML=html;
+  $("calGrid").querySelectorAll(".day[data-d]").forEach(c=>c.onclick=()=>openDay(c.dataset.d));
+  // 월 누적
+  const lines=Object.entries(totals).filter(([,h])=>h>0).map(([pid,h])=>`<div class='tline'><span>${esc(roster[pid]?.name||"?")}</span><span><b>${fmtH(h)}</b> 시간</span></div>`).join("");
+  $("monthTotal").innerHTML=`<div class='ttl'>이번 달 누적</div>${lines||"<div class='tline' style='color:var(--sub)'>기록 없음</div>"}`;
+}
+$("mPrev").onclick=()=>{otMonth.setMonth(otMonth.getMonth()-1);renderCalendar();};
+$("mNext").onclick=()=>{otMonth.setMonth(otMonth.getMonth()+1);renderCalendar();};
+
+/* 날짜 모달 */
+function openDay(dateKey){renderDayModal(dateKey);$("dayModal").classList.add("show");}
+function renderDayModal(dateKey){
+  const canEdit=adminMode||dateKey===todayStr();
+  const dayData=otCache[dateKey]||{};
+  const[,mm,dd]=dateKey.split("-");
+  let html=`<h3>${+mm}월 ${+dd}일 초과근무</h3>`;
+  if(!canEdit)html+=`<div class='notice'>일반 모드에서는 <b>오늘 날짜만</b> 입력·수정할 수 있습니다. (관리자 모드는 전체 가능합니다)</div>`;
+  // 기존 기록
+  const ents=Object.entries(dayData).filter(([pid])=>roster[pid]&&roster[pid].overtime!==false);
+  html+="<div class='ent-list'>";
+  if(ents.length===0)html+="<div class='empty' style='padding:14px;font-size:13px'>기록 없음</div>";
+  ents.forEach(([pid,e])=>{
+    const h=diffHours(e.start,e.end);
+    html+=`<div class='ent-card'>${e.img?`<img src='${e.img}'>`:""}<div class='info'><b>${esc(roster[pid].name)}</b> · ${e.start}~${e.end} (${fmtH(h)}h)<br>${esc(e.reason||"")}</div>${canEdit?`<div class='acts'><button data-edit='${pid}'>수정</button><button data-rm='${pid}' style='color:var(--warn)'>삭제</button></div>`:""}</div>`;
+  });
+  html+="</div>";
+  // 입력 폼
+  if(canEdit){
+    const opts=otPeople().map(([id,p])=>`<option value='${id}'>${esc(p.name)}</option>`).join("");
+    html+=`
+    <div class='fld'><label>인원</label><select id='fPerson'>${opts||"<option>인원 없음</option>"}</select></div>
+    <div class='fld two'>
+      <div style='flex:1'><label>시작</label><div class='timefield' onclick="document.getElementById('fStart').showPicker&&document.getElementById('fStart').showPicker()"><span class='clk'>🕐</span><input type='time' id='fStart' value='18:00'></div></div>
+      <div style='flex:1'><label>종료</label><div class='timefield' onclick="document.getElementById('fEnd').showPicker&&document.getElementById('fEnd').showPicker()"><span class='clk'>🕐</span><input type='time' id='fEnd'></div></div>
+    </div>
+    <div class='cap'>🕐 칸을 누르면 시간 선택창이 열립니다</div>
+    <div class='fld'><label>사유</label><textarea id='fReason' rows='2' placeholder='예: 영상 편집 마감'></textarea></div>
+    <div class='fld'><label>이미지 (선택)</label><input type='file' id='fImg' accept='image/*'><div id='fPrev' style='margin-top:8px'></div></div>
+    <div class='modal-btns'><button id='dClose'>닫기</button><button id='fSave' class='primary'>저장</button></div>`;
+  } else {
+    html+=`<div class='modal-btns'><button id='dClose'>닫기</button></div>`;
+  }
+  $("dayBody").innerHTML=html;
+  formImg="";
+  // 핸들러
+  $("dClose").onclick=()=>$("dayModal").classList.remove("show");
+  if(canEdit){
+    const prevBox=$("fPrev");
+    function drawPrev(){prevBox.innerHTML=formImg?`<div class='preview'><img src='${formImg}'><button class='x' id='imgX'>×</button></div>`:"";if(formImg)$("imgX").onclick=()=>{formImg="";drawPrev();};}
+    $("fImg").onchange=e=>{const f=e.target.files[0];if(!f)return;fileToThumb(f,b=>{formImg=b;drawPrev();});};
+    $("fSave").onclick=()=>{
+      const pid=$("fPerson").value;const start=$("fStart").value,end=$("fEnd").value;
+      if(!pid){alert("인원을 선택해 주세요.");return;}
+      if(!start||!end){alert("시작·종료 시각을 모두 입력해 주세요.");return;}
+      const obj={start,end,reason:$("fReason").value.trim()};if(formImg)obj.img=formImg;
+      db.ref(`${ROOT}/overtime/${dateKey}/${pid}`).set(obj).then(()=>renderDayModal(dateKey));
+    };
+    $("dayBody").querySelectorAll("button[data-edit]").forEach(b=>b.onclick=()=>{
+      const e=dayData[b.dataset.edit];$("fPerson").value=b.dataset.edit;$("fStart").value=e.start;$("fEnd").value=e.end;$("fReason").value=e.reason||"";formImg=e.img||"";drawPrev();$("dayBody").scrollInto?null:null;
+    });
+    $("dayBody").querySelectorAll("button[data-rm]").forEach(b=>b.onclick=()=>{if(confirm("삭제하시겠습니까?"))db.ref(`${ROOT}/overtime/${dateKey}/${b.dataset.rm}`).remove().then(()=>renderDayModal(dateKey));});
+    drawPrev();
+  }
+}
+
+/* 이미지 축소 → base64 */
+function fileToThumb(file,cb){
+  const r=new FileReader();
+  r.onload=()=>{const img=new Image();img.onload=()=>{const max=500;let w=img.width,h=img.height;if(w>h){if(w>max){h=h*max/w;w=max;}}else{if(h>max){w=w*max/h;h=max;}}const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);cb(c.toDataURL("image/jpeg",0.6));};img.src=r.result;};
+  r.readAsDataURL(file);
+}
+
+/* 비밀번호 변경 */
+$("changePw").onclick=()=>{const np=prompt("새 비밀번호를 입력하세요:");if(np){db.ref(`${ROOT}/config/password`).set(np);alert("변경되었습니다.");}};
+
+renderWeekly();renderCalendar();
+</script>
+</body>
+</html>
